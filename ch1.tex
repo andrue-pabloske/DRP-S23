@@ -1,0 +1,127 @@
+\documentclass{article}
+
+\usepackage{amsmath, amsthm}
+\usepackage[margin=0.25in]{geometry}
+\usepackage[mathcal]{euscript}
+\usepackage[linesnumbered, lined, boxed, commentsnumbered]{algorithm2e}
+\usepackage[noend]{algpseudocode}
+
+\theoremstyle{definition}
+\newtheorem{defn}{Definition}
+%\AtEndEnvironment{defn}{\qed}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+
+%\title{}
+\title{Notes on Computational Geometry\\Chapter 1: Intro}
+\author{Andy Pavlosky}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+Computational geometry = study of algorithms and data structures for geometric objects.
+Has applications in computer graphics, CAD, robotics, geographic information systems.
+
+\section{Convex Hulls}
+
+\begin{defn}
+    A subset $S$ of the plane is called \textbf{convex} if for all points $p, q \in S$,
+    the line segment $\overline{pq}$ is contained entirely in $S$.
+\end{defn}
+
+\begin{defn}
+    The \textbf{convex hull} $\mathcal{CH}(S)$ of $S$ is the smallest convex set containing $S$.
+    Specifically, it is the intersection of all convex sets containing $S$.
+\end{defn}
+
+\begin{itemize}
+    \item Intuitively, if we have a set of points $P$ in the plane, we can get its convex hull by
+    stretching a rubber band around all of the points, then letting go. So the 
+    convex hull is the (unique) polygon with points from $P$ that contains all points in $P$.
+    \item We can begin writing an algorithm to compute the convex hull of such a set. Let's represent a polygon by
+    listing its vertices in clockwise order. Observe that given two points $p$, $q$ of $P$, the segment
+    $\overline{pq}$ is an edge of $\mathcal{CH}(S)$ iff all other points of P lie to its right.
+    This leads to the following algorithm:
+\end{itemize}
+
+\begin{algorithm}
+    \SetKwData{Valid}{valid}\SetKwData{Edges}{E}
+    \SetKwInOut{Input}{input}\SetKwInOut{Output}{output}
+
+    \Input{A set $P$ of points in the plane.}
+    \Output{A list $\mathcal{L}$ of the vertices of $\mathcal{CH}(S)$ in clockwise order.}
+    \BlankLine
+    \Edges$\gets \emptyset$.\\
+    \For{\normalfont all ordered pairs $(p,q) \in P \times P$ with $p \neq q$}{
+        \Valid$\gets \textbf{true}$\\
+        \For{\normalfont all points $r \in P$ not equal to $p$ or $q$}{
+            \If{\normalfont $r$ is to the left of the directed line from $p$ to $q$}{
+                \Valid$\gets \textbf{false}$.
+            }
+        }
+        \If{\Valid}{\normalfont Add the directed edge $\overrightarrow{pq}$ to \Edges .}
+    }
+    Construct $\mathcal{L}$ by sorting the elements of \Edges in clockwise order.\\
+    \Return{$\mathcal{L}$}
+
+    \caption{SlowConvexHull$(P)$}
+\end{algorithm}
+
+\begin{itemize}
+    \item This algorithm has some issues, though. First is that it doesn't handle three points on one line.
+    To fix this, we should require that $r$ be strictly to the right of $\overrightarrow{pq}$.
+    \item Second, floating point computations can cause inaccuracies in the computation of the convex hull.
+    For this algorithm, it may cause the result not to be a closed polygon at all!
+    \item Lastly, it is slow. We check $n^2-n$ pairs of points, and $n-2$ points for each of those, making it
+    run in $O(n^3)$ time.
+\newpage
+    \item The following algorithm rectifies many of the issues in the previous one.
+    \item It works by sorting the points by $x$-coordinate (then by $y$-coordinate, if an
+    $x$-coordinate is repeated), then adding the points in this order and updating the solution after each
+    addition.
+\end{itemize}
+
+\begin{algorithm}
+    \SetKwData{Valid}{valid}\SetKwData{Edges}{E}\SetKwData{i}{i}
+    \SetKwInOut{Input}{input}\SetKwInOut{Output}{output}
+
+    \Input{A set $P$ of points in the plane.}
+    \Output{A list $\mathcal{L}$ of the vertices of $\mathcal{CH}(S)$ in clockwise order.}
+    \BlankLine
+    Sort $P$ by $x$- (then $y$-) coordinate, giving us a sequence $p_1, \dots, p_n$.\\
+    \normalfont Add $p_1$ then $p_2$ to $\mathcal{L}_{upper}$.\\
+    \For{\i $\gets 3$ \textbf{to} $n$}{
+        Append $p_i$ to $\mathcal{L}_{upper}$.\\
+        \While{\normalfont $\mathcal{L}_{upper}$ contains more than two points and the last three points in
+                $\mathcal{L}_{upper}$ do not make a right turn}{
+            Delete the middle of the last three points in $\mathcal{L}_{upper}$.
+        }
+    }
+    Similarly compute the lower hull $\mathcal{L}_{lower}$.\\
+    Delete the first and last points in $\mathcal{L}_{lower}$ to avoid duplication.\\
+    Append $\mathcal{L}_{lower}$ to $\mathcal{L}_{upper}$.\\
+    \Return{$\mathcal{L}$}
+
+    \caption{ConvexHull$(P)$}
+\end{algorithm}
+
+\begin{itemize}
+    \item This rectifies most of the problems with the last algorithm.
+    \item Floating-point arithmetic may still cause errors, but not as badly as the last algorithm, which
+    could have output something that wasn't even a closed polygon.
+    \item The runtime for this is also dominated by the sorting, which can be done in $O(n\log n)$ time.
+\end{itemize}
+
+\section{Algorithm Strategies}
+Development of a geometric algorithm often goes through three phases:
+\begin{itemize}
+    \item First, develop an algorithm ignoring degenerate cases that clutter our understanding of the problem.
+    \item Second, adjust the algorithm to deal with degenerate cases, ideally by handling special cases with the general case.
+    \item Third, actual implementation, where we must implement or find libraries to handle primitive operations like testing
+    whether a point is to the left or right of a line, as well as consider the consequences of floating-point arithmetic.
+\end{itemize}
+
+\end{document}

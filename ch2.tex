@@ -1,0 +1,115 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+\usepackage[margin=1in]{geometry}
+\usepackage[colorlinks]{hyperref}
+
+\usepackage[T1]{fontenc}
+\usepackage{tgpagella}
+
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage{soul}
+
+\newcommand{\C}{{\mathbb{C}}}
+\newcommand{\F}{{\mathbb{F}}}
+\newcommand{\R}{{\mathbb{R}}}
+\newcommand{\Z}{{\mathbb{Z}}}
+\newcommand{\Q}{{\mathbb{Q}}}
+
+\newcommand{\ket}[1]{|{#1}\rangle}
+\newcommand{\bra}[1]{\langle{#1}|}
+\newcommand{\braket}[2]{\<{#1}|{#2}\>}
+\newcommand{\norm}[1]{\|{#1}\|}
+\newcommand{\Norm}[1]{\left\|{#1}\right\|}
+\newcommand{\eat}[1]{}
+\newcommand{\ve}{\varepsilon}
+
+\newcommand{\eq}[1]{(\ref{eq:#1})}
+\renewcommand{\sec}[1]{Section~\ref{sec:#1}}
+\newtheorem{example}{Example}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conj}[theorem]{Conjecture}
+\newtheorem{definition}{Definition}
+\newtheorem{problem}[theorem]{Problem}
+\renewcommand{\mod}[1]{(\text{mod } {#1})}
+\renewcommand{\break}{\begin{center} \line(1,0){250} \end{center}}
+\newcommand{\into}[1]{\stackrel{{#1}}{\hookrightarrow}}
+\renewcommand{\Pr}[1]{\textbf{Pr}\left[ {#1} \right]}
+\newcommand{\Ex}[1]{\textbf{Ex}\left[ {#1} \right]}
+
+\newcommand{\Qu}[1]{\textcolor{red}{Q: {#1}}}
+\newcommand{\todo}[1]{\textcolor{red}{TODO: {#1}}}
+\newcommand{\An}[1]{\textcolor{blue}{A: {#1}}}
+\newcommand{\vphi}{{\varphi}}
+\usepackage[parfill]{parskip}
+
+%\title{}
+\title{Notes on Computational Geometry\\Chapter 2: Line Segment Intersection}
+\author{Andy Pavlosky}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+Motivating example: Geographic information systems split maps into several layers, each containing one type of data, and compute the intersections of data in these maps (e.g. intersection of roads and rivers).
+
+First problem formulation: Given a set $S$ of segments in the plane, compute all points where segments in $S$ intersect.
+
+The brute force approach for this is $O(n^2)$, which is only efficient if there are lots of intersections. In general, we can do better.
+
+Idea: if the orthogonal projections of segments onto the $y$-axis don't intersect, then the lines themselves can't intersect. So only test lines whose projections intersect.
+
+\begin{definition}
+An algorithm that uses this idea is called a \textbf{plane sweep} algorithm (imagine sweeping a horizontal line $l$, called the \textbf{sweep line} down the plane). The set of segments intersecting the sweep line is called the \textbf{status}. The status must be updated only at certain points, called \textbf{event points}.
+\end{definition}
+
+We also want to ensure segments are close on the $x$-axis when we test them. To do this, only test segments adjacent in the $x$-direction on the sweep line.
+
+Handling each type of event point:
+\begin{enumerate}
+    \item Upper endpoints: The new segment added to the status must be tested for intersection with its neighbors.
+    \item Intersection points: The two segments which intersect change order, and get (at most) one new neighbor to be tested against.
+    \item Lower endpoints: The neighbors of the line which is remove from the status are now neighbors and must be tested.
+\end{enumerate}
+
+Our algorithm will store the event points in the \textbf{event queue} $\mathcal{Q}$, which is a balanced binary search tree where where $p > q$ iff $p_y > q_y$ or $p_y=q_y$ and $p_x < q_x$. We also store the segments intersecting the sweep line in the \textbf{status structure} $\mathcal{T}$, which is a binary search tree with the segments intersecting the sweep line in its leaves. At a high level, the algorithm to compute these intersections does the following:
+\begin{itemize}
+    \item Insert the segment endpoints into $\mathcal{Q}$.
+    \item Handle the next event point as described above and delete it from the queue.
+    \item If an intersection is found, report it and add it to the event queue if it's not already in it.
+\end{itemize}
+
+The approach described runs in $O(n\log n + I\log n)$ time, where n is the number of segments and I is the number of intersections.
+
+Second problem formulation: We want to compute the overlap of regions in the plane. We'll represent one of these regions as an area enclosed by edges of a graph.
+
+Terminology:
+\begin{itemize}
+    \item A \textbf{face} is an open polygonal region whose boundary consists of edges and vertices.
+    \item The \textbf{complexity} of a subdivision is the sum of the number of its vertices, edges, and faces.
+    \item If a vertex is the endpoint of an edge, they are \textbf{incident} (similar for faces and edges, and faces and vertices).
+\end{itemize}
+The \textbf{doubly-connected edge list} will store information about our region and let us perform operations such as the following:
+\begin{itemize}
+    \item Walk around the boundary of a given face
+    \item Access an adjacent face
+    \item Visit all edges around a vertex
+\end{itemize}
+
+It accomplishes this by storing collections of the following information:
+\begin{itemize}
+    \item Vertex records, which will store each vertex's coordinates and an arbitrary incident edge.
+    \item Face records, which will store some half-edge on each face's boundary, and a list of arbitrary half-edges for each hole.
+    \item Half-edge records, which will store each half-edge's origin, its twin, its incident face, and its next and prev half-edges.
+\end{itemize}
+
+Now for two of these subdivisions $\mathcal{S}_1$ and $\mathcal{S}_2$, we will compute their overlay $\mathcal{O}(S_1, S_2)$. This is essentially the subdivision created by the edges of both $\mathcal{S}_1$ and $\mathcal{S}_2$. Our goal is to compute a doubly-connected edge list for $\mathcal{O}(S_1, S_2)$.
+
+The book describes an $O(n\log n + k\log n)$ approach to this problem, where $n$ is the total number of vertices, and $k$ is the complexity of the output. This allows us to compute the union, intersection, and difference of subdivisions of the plane in quasi-linear time.
+
+\end{document}
